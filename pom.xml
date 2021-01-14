@@ -1,0 +1,114 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>pt.uma</groupId>
+    <artifactId>project-2</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+
+    <properties>
+        <project.build.sourceEncoding>utf-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+
+        <!-- DEFAULT RASPBERRY PI PROPERTIES -->
+        <pi.host>192.168.0.101</pi.host>
+        <pi.port>22</pi.port>
+        <pi.user>pi</pi.user>
+        <pi.password>raspberry</pi.password>
+        <pi.deployDirectory>/home/pi/project</pi.deployDirectory>
+        <pi.main.class>pt.uma.project1.Main</pi.main.class>
+
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>3.8.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.pi4j</groupId>
+            <artifactId>pi4j-core</artifactId>
+            <version>1.2</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- This plugin will generate JAR MANIFEST file inside the JAR in order to make our applicationeasily runnable -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>${pi.main.class}</mainClass>
+                        </manifest>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-my-jar-with-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--This plugin will Transfer the executable JAR file to the Pi and runs it -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.8</version>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <tasks>
+                                <!-- create dir if not exists -->
+                                <sshexec host="${pi.host}" port="${pi.port}" username="${pi.user}"
+                                         password="${pi.password}"
+                                         trust="true" failonerror="false" verbose="true"
+                                         command="mkdir --parents ${pi.deployDirectory}"/>
+
+                                <!-- copy the JAR file raspberry -->
+                                <scp
+                                        file="${project.build.directory}/${project.build.finalName}-jar-with-dependencies.jar"
+                                        todir="${pi.user}:${pi.password}@${pi.host}:${pi.deployDirectory}"
+                                        port="${pi.port}" trust="true" verbose="true" failonerror="true">
+                                </scp>
+
+                                <!-- run jar on raspberry -->
+                                <sshexec host="${pi.host}" port="${pi.port}" username="${pi.user}"
+                                         password="${pi.password}" trust="true" failonerror="false"
+                                         verbose="true"
+                                         command="java -jar ${pi.deployDirectory}/${project.build.finalName}-jar-with-dependencies.jar"/>
+                            </tasks>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.ant</groupId>
+                        <artifactId>ant-jsch</artifactId>
+                        <version>1.9.6</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+        </plugins>
+    </build>
+</project>
